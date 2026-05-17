@@ -7,3 +7,5 @@ data/
 output/
 *.xlsx
 *.zip
+/.quarto/
+**/*.quarto_ipynb
