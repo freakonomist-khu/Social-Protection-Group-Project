@@ -33,13 +33,32 @@ You can add options to executable code like this
 
 ```{r}
 #install.packages("here")
+install.packages("readxl")
 library(here)
 library(tidyverse)
+library(readxl)
 
 here()
 
 df <- read.csv(here("data/PER-Table1-Key-Indicators.csv"))
 
+# Check available sheets before loading
+excel_sheets(here("data/PER-Table7-Coverage12-Programs.xlsx"))
+```
+
+```{r}
+df_coverage <- read_excel(here("data/PER-Table7-Coverage12-Programs.xlsx"))
+
+# Peek at structure to identify relevant columns
+glimpse(df_coverage)
+```
+
+```{r}
+# Filter for UCT and CCT programs
+df_uct_cct <- df_coverage |>
+  filter(str_detect(program_type, regex("unconditional|conditional cash", ignore_case = TRUE)))
+
+head(df_uct_cct)
 ```
 
 ### Cleaning dataset
