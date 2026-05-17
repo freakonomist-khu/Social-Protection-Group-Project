@@ -24,10 +24,13 @@ We use data provided by ASPIRE World Bank
 You can add options to executable code like this
 
 ```{r}
+#install.packages("here")
+library(here)
 library(tidyverse)
 
-df <- read.csv("data/PER-Table1-Key-Indicators.csv")
-getwd()
+here()
+
+df <- read.csv(here("data/PER-Table1-Key-Indicators.csv"))
 
 ```
 
