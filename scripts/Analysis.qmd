@@ -1,6 +1,12 @@
 ---
 title: "Social Protection Project"
-author: "Farhan"
+subtitle: "Field Data Analysis — Group Project"
+author:
+  - name: "Carina"
+  - name: "Liyuansheng"
+  - name: "Natalia"
+  - name: "Farhan"
+date: today
 format: pdf
 editor: visual
 project:
@@ -11,15 +17,17 @@ project:
 
 In order for Field Data Analysis our group will analyze which social protection program is the most associate with the reducing poverty gap between Unconditional Cash Transfer and Conditional Cash Transfer.
 
+### Theoretical Framework
+
+### Reaserch Objective and Research Question
+
 ## Data Sources
 
 We use data provided by ASPIRE World Bank
 
-```{r}
-1 + 1
-```
+## Step by step
 
-## Starting with library and Dataset
+### Library and Dataset
 
 You can add options to executable code like this
 
@@ -34,8 +42,16 @@ df <- read.csv(here("data/PER-Table1-Key-Indicators.csv"))
 
 ```
 
-The `echo: false` option disables the printing of code (only output is displayed).
+### Cleaning dataset
 
-`{echo:false} {r} summary(df)`
+### Descriptive Data
 
-Kita akan mencoba mengubah ini apakah diminta untuk commit
+### Visualization
+
+### Modeling
+
+## Conclusion
+
+## Ethics Disclosure
+
+## Reference
