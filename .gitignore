@@ -5,7 +5,9 @@
 .positai
 data/
 output/
+!output/**/*.pdf
 *.xlsx
 *.zip
+
 /.quarto/
 **/*.quarto_ipynb
