@@ -4,8 +4,6 @@
 .Ruserdata
 .positai
 data/
-output/
-!output/**/*.pdf
 *.xlsx
 *.zip
 
