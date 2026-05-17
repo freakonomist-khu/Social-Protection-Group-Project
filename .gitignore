@@ -3,3 +3,7 @@
 .Rproj.user
 .Ruserdata
 .positai
+data/
+output/
+*.xlsx
+*.zip
