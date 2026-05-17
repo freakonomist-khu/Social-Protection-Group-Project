@@ -37,3 +37,5 @@ df <- read.csv(here("data/PER-Table1-Key-Indicators.csv"))
 The `echo: false` option disables the printing of code (only output is displayed).
 
 `{echo:false} {r} summary(df)`
+
+Kita akan mencoba mengubah ini apakah diminta untuk commit
