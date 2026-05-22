@@ -1,17 +1,17 @@
- ---
-title: "Social Protection Project"
-subtitle: "Field Data Analysis — Group Project"
-author:
-  - name: "Carina"
-  - name: "Liyuansheng"
-  - name: "Natalia"
-  - name: "Farhan"
-date: today
-format: pdf
-editor: visual
-project:
-  execute-dir: project
----
+|                                                 |
+|-------------------------------------------------|
+| Title: "Social Protection Project"              |
+| Subtitle: "Field Data Analysis — Group Project" |
+| Author:                                         |
+| \- name: "Carina"                               |
+| \- name: "Liyuansheng"                          |
+| \- name: "Natalia"                              |
+| \- name: "Farhan"                               |
+| Date: today                                     |
+| Format: pdf                                     |
+| Editor: visual                                  |
+| Project:                                        |
+| execute-dir: project                            |
 
 ## Introduction
 
@@ -19,7 +19,19 @@ In order for Field Data Analysis our group will analyze which social protection 
 
 ### Theoretical Framework
 
-### Reaserch Objective and Research Question
+### Research Objective and Research Questions
+
+**Research Objective**
+
+This study aims to examine the association between two major social assistance modalities — Unconditional Cash Transfers (UCT) and Conditional Cash Transfers (CCT) — and poverty gap reduction across countries, using cross-country program performance data from the World Bank's ASPIRE database. Recognizing that the observed relationship may be influenced by program design and country-level characteristics, the analysis controls for transfer adequacy, benefit incidence toward the poorest quintile, average transfer value, country income classification, and geographic region. By comparing the conditional associations of UCT and CCT coverage with poverty gap reduction, the study seeks to inform evidence-based policy recommendations on the relative effectiveness of each modality in reducing the depth of poverty.
+
+**Research Questions**
+
+1.  Is there a statistically significant correlation between UCT program coverage and poverty gap reduction across countries in the ASPIRE dataset, after controlling for transfer adequacy, benefit incidence, and country income level?
+
+2.  Is there a statistically significant correlation between CCT program coverage and poverty gap reduction across countries in the ASPIRE dataset, after controlling for the same confounders?
+
+3.  Which cash transfer modality — UCT or CCT — shows a stronger association with poverty gap reduction, and does this relationship differ when coverage is measured among the poorest quintile versus the total population?
 
 ## Data Sources
 
@@ -29,36 +41,139 @@ We use data provided by ASPIRE World Bank
 
 ### Library and Dataset
 
-You can add options to executable code like this
+We add necessary packages and library to extract data from ASPIRE dataset
 
 ```{r}
 #install.packages("here")
-install.packages("readxl")
+#install.packages("readxl")
 library(here)
 library(tidyverse)
 library(readxl)
 
-here()
 
-df <- read.csv(here("data/PER-Table1-Key-Indicators.csv"))
+```
+
+We call the data from the ASPIRE first, since the data format still in excel file and nested format we need to clean and format the data first.
+
+```{r}
 
 # Check available sheets before loading
-excel_sheets(here("data/PER-Table7-Coverage12-Programs.xlsx"))
+raw_peek<- read_excel(here("data/PER-Table7-Coverage12-Programs.xlsx"),
+                      n_max = 10,
+                      col_names = FALSE   # don't let R guess headers
+)
+
+print(raw_peek, n = 10, width = Inf)
+
+#let's also do for the indicator table
+raw_peek_t1 <- read_excel(
+  here("data/PER-Table1-Key-Indicators.xlsx"),
+  n_max = 10,
+  col_names = FALSE
+)
+print(raw_peek_t1, n = 10, width = Inf)
+
+
 ```
 
-```{r}
-df_coverage <- read_excel(here("data/PER-Table7-Coverage12-Programs.xlsx"))
+Format key indicator data (Table 1):
 
-# Peek at structure to identify relevant columns
-glimpse(df_coverage)
+```{r}
+# 17 columns total: 2 blank notes cols, then 15 data cols
+# skip=3: row1=title, row2=main headers, row3=sub-headers → data starts row4
+col_names_t1 <- c(
+  "note",                    # col1: blank / "*New survey*" annotation
+  "blank2",                  # col2: always blank
+  "region",
+  "country_code",
+  "income_class",
+  "country",
+  "year",
+  "coverage_pq",             # Coverage - Poorest quintile
+  "coverage_total",          # Coverage - Total
+  "benefit_incidence_pq",    # Benefit Incidence (Poorest 20%) - Poorest quintile
+  "avg_transfer_total",      # Average transfer amount $/day PPP - Total
+  "adequacy_pq",             # Adequacy - Poorest quintile
+  "adequacy_total",          # Adequacy - Total
+  "gini_reduction",          # Gini reduction due to SPL (%)
+  "headcount_reduction",     # Poverty Headcount reduction (%)
+  "poverty_gap_reduction",   # Poverty Gap reduction (%) <- OUTCOME VARIABLE
+  "benefit_cost_ratio"       # Benefit-cost ratio
+)
+
+df_t1 <- read_excel(
+  here("data/PER-Table1-Key-Indicators.xlsx"),
+  skip = 3,
+  col_names = col_names_t1,
+  na = c("n.a.", "NA", "")
+) |>
+  filter(!is.na(country_code)) |>
+  select(-note, -blank2) |>
+  mutate(year = as.integer(year),
+         across(coverage_pq:benefit_cost_ratio, as.numeric))
+
+glimpse(df_t1)
+sample(df_t1)
 ```
 
-```{r}
-# Filter for UCT and CCT programs
-df_uct_cct <- df_coverage |>
-  filter(str_detect(program_type, regex("unconditional|conditional cash", ignore_case = TRUE)))
+Now format Table 7 (Coverage of 12 Programs — UCT and CCT are here):
 
-head(df_uct_cct)
+```{r}
+# 34 columns total: 2 blank + 5 id cols + 1 blank sep + 12 programs x 2 (PQ, Total) + 3 blank seps
+# skip=4: row1=title, row2=level1 categories, row3=program names, row4=PQ/Total labels → data starts row5
+col_names_t7 <- c(
+  "note", "blank2",                        # cols 1-2: blank
+  "region", "country_code",               # cols 3-4
+  "income_class", "country", "year",      # cols 5-7
+  "sep1",                                 # col 8: blank separator
+  "si_contrib_pensions_pq",   "si_contrib_pensions_total",   # cols 9-10: Contributory pensions
+  "si_other_insurance_pq",    "si_other_insurance_total",    # cols 11-12: Other social insurance
+  "sep2",                                 # col 13: blank separator
+  "lm_passive_pq",            "lm_passive_total",            # cols 14-15: Passive labor market
+  "lm_active_pq",             "lm_active_total",             # cols 16-17: Active labor market
+  "sep3",                                 # col 18: blank separator
+  "uct_pq",                   "uct_total",                   # cols 19-20: Cash transfers (UCT)
+  "cct_pq",                   "cct_total",                   # cols 21-22: Conditional cash transfer (CCT)
+  "sa_noncontrib_pensions_pq","sa_noncontrib_pensions_total",# cols 23-24
+  "sa_food_inkind_pq",        "sa_food_inkind_total",        # cols 25-26
+  "sa_school_feeding_pq",     "sa_school_feeding_total",     # cols 27-28
+  "sa_public_works_pq",       "sa_public_works_total",       # cols 29-30
+  "sa_fee_waivers_pq",        "sa_fee_waivers_total",        # cols 31-32
+  "sa_other_pq",              "sa_other_total"               # cols 33-34
+)
+
+df_t7 <- read_excel(
+  here("data/PER-Table7-Coverage12-Programs.xlsx"),
+  skip = 4,
+  col_names = col_names_t7,
+  na = c("n.a.", "NA", "")
+) |>
+  filter(!is.na(country_code)) |>
+  select(-note, -blank2, -starts_with("sep")) |>
+  mutate(year = as.integer(year),
+         across(si_contrib_pensions_pq:sa_other_total, as.numeric))
+
+glimpse(df_t7)
+sample(df_t7)
+```
+
+Join UCT/CCT coverage with poverty gap outcome:
+
+```{r}
+df_analysis <- df_t7 |>
+  select(country_code, country, region, income_class, year,
+         uct_pq, uct_total, cct_pq, cct_total) |>
+  left_join(
+    df_t1 |> select(country_code, year, poverty_gap_reduction),
+    by = c("country_code", "year")
+  ) |>
+  filter(!is.na(poverty_gap_reduction))
+
+glimpse(df_analysis)
+nrow(df_analysis)
+sample(df_analysis)
+
+write.csv(df_analysis,"../data/clean_dataset.csv",row.names=FALSE)
 ```
 
 ### Cleaning dataset
