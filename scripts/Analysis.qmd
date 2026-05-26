@@ -23,15 +23,15 @@ In order for Field Data Analysis our group will analyze which social protection 
 
 **Research Objective**
 
-This study aims to examine the association between two major social assistance modalities — Unconditional Cash Transfers (UCT) and Conditional Cash Transfers (CCT) — and poverty gap reduction across countries, using cross-country program performance data from the World Bank's ASPIRE database. Recognizing that the observed relationship may be influenced by program design and country-level characteristics, the analysis controls for transfer adequacy, benefit incidence toward the poorest quintile, average transfer value, country income classification, and geographic region. By comparing the conditional associations of UCT and CCT coverage with poverty gap reduction, the study seeks to inform evidence-based policy recommendations on the relative effectiveness of each modality in reducing the depth of poverty.
+This study aims to examine the association between two major social assistance modalities — Unconditional Cash Transfers (UCT) and Conditional Cash Transfers (CCT) — and poverty gap reduction across countries, using cross-country program performance data from the World Bank's ASPIRE database. Recognizing that the observed relationship may be influenced by program design and country-level characteristics, the analysis controls for transfer adequacy, benefit incidence toward the poorest quintile, average transfer value, country income classification, and geographic region. By comparing the conditional associations of UCT and CCT coverage with poverty gap reduction, the study seeks to inform evidence-based policy recommendations on the relative effectiveness of each modality in reducing the poverty level.
 
 **Research Questions**
 
-1.  Is there a statistically significant correlation between UCT program coverage and poverty gap reduction across countries in the ASPIRE dataset, after controlling for transfer adequacy, benefit incidence, and country income level?
+1.  Is there a statistically significant correlation between UCT program coverage (total population, poorest quantile) and poverty gap reduction across countries in the ASPIRE dataset, after controlling for **benefit incidence, country income class, regional classification, other social protection intervention (school feeding, public works, and social care services)?**
 
-2.  Is there a statistically significant correlation between CCT program coverage and poverty gap reduction across countries in the ASPIRE dataset, after controlling for the same confounders?
+2.  Is there a statistically significant correlation between CCT program coverage (total population, poorest quantile) and poverty gap reduction across countries in the ASPIRE dataset, after controlling for the same confounders?
 
-3.  Which cash transfer modality — UCT or CCT — shows a stronger association with poverty gap reduction, and does this relationship differ when coverage is measured among the poorest quintile versus the total population?
+3.  Which cash transfer modality — UCT or CCT — **shows a stronger association with poverty gap reduction**, and does this relationship differ **when coverage is measured among the poorest quintile versus the total population**?
 
 ## Data Sources
 
@@ -162,9 +162,16 @@ Join UCT/CCT coverage with poverty gap outcome:
 ```{r}
 df_analysis <- df_t7 |>
   select(country_code, country, region, income_class, year,
-         uct_pq, uct_total, cct_pq, cct_total) |>
+         uct_pq, uct_total, cct_pq, cct_total,
+         school_feeding_pq    = sa_school_feeding_pq,
+         school_feeding_total = sa_school_feeding_total,
+         public_works_pq      = sa_public_works_pq,
+         public_works_total   = sa_public_works_total,
+         social_care_pq       = sa_other_pq,
+         social_care_total    = sa_other_total) |>
   left_join(
-    df_t1 |> select(country_code, year, poverty_gap_reduction),
+    df_t1 |> select(country_code, year, poverty_gap_reduction,
+                    avg_transfer_amount = avg_transfer_total),
     by = c("country_code", "year")
   ) |>
   filter(!is.na(poverty_gap_reduction))
