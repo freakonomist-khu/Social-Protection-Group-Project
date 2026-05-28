@@ -1,17 +1,15 @@
-|                                                 |
-|-------------------------------------------------|
-| Title: "Social Protection Project"              |
-| Subtitle: "Field Data Analysis — Group Project" |
-| Author:                                         |
-| \- name: "Carina"                               |
-| \- name: "Liyuansheng"                          |
-| \- name: "Natalia"                              |
-| \- name: "Farhan"                               |
-| Date: today                                     |
-| Format: pdf                                     |
-| Editor: visual                                  |
-| Project:                                        |
-| execute-dir: project                            |
+---
+title: "Social Protection Project"
+subtitle: "Field Data Analysis — Group Project"
+author:
+  - name: "Carina"
+  - name: "Liyuansheng"
+  - name: "Natalia"
+  - name: "Farhan"
+date: today
+format: pdf
+editor: visual
+---
 
 ## Introduction
 
@@ -46,6 +44,8 @@ We add necessary packages and library to extract data from ASPIRE dataset
 ```{r}
 #install.packages("here")
 #install.packages("readxl")
+#install.packages("stargazer")
+library(stargazer)
 library(here)
 library(tidyverse)
 library(readxl)
@@ -180,7 +180,21 @@ glimpse(df_analysis)
 nrow(df_analysis)
 sample(df_analysis)
 
-write.csv(df_analysis,"../data/clean_dataset.csv",row.names=FALSE)
+```
+
+Drop rows with no UCT **and** no CCT data:
+
+```{r}
+df_analysis_clean <- df_analysis |>
+  filter((!is.na(uct_pq) | !is.na(uct_total)) & (!is.na(cct_pq) | !is.na(cct_total))) |>
+  mutate(across(c(school_feeding_pq, school_feeding_total,
+                  public_works_pq,   public_works_total,
+                  social_care_pq,    social_care_total),
+                ~ replace_na(., 0)))
+
+glimpse(df_analysis_clean)
+nrow(df_analysis_clean)
+
 ```
 
 ### Cleaning dataset
@@ -190,6 +204,158 @@ write.csv(df_analysis,"../data/clean_dataset.csv",row.names=FALSE)
 ### Visualization
 
 ### Modeling
+
+```{r}
+
+
+# --- Poorest Quintile models ---
+m1_pq <- lm(poverty_gap_reduction ~ avg_transfer_amount + uct_pq + cct_pq,
+            data = df_analysis_clean)
+
+m2_pq <- lm(poverty_gap_reduction ~ avg_transfer_amount + uct_pq + cct_pq +
+              factor(income_class) + factor(region),
+            data = df_analysis_clean)
+
+m3_pq <- lm(poverty_gap_reduction ~ avg_transfer_amount + uct_pq + cct_pq +
+              factor(income_class) + factor(region) +
+              school_feeding_pq + public_works_pq,
+            data = df_analysis_clean)
+
+m4_pq <- lm(poverty_gap_reduction ~ avg_transfer_amount + uct_pq + cct_pq +
+              factor(income_class) + factor(region) +
+              school_feeding_pq + public_works_pq + social_care_pq,
+            data = df_analysis_clean)
+
+# --- Total Population models ---
+m1_tot <- lm(poverty_gap_reduction ~ avg_transfer_amount + uct_total + cct_total,
+             data = df_analysis_clean)
+
+m2_tot <- lm(poverty_gap_reduction ~ avg_transfer_amount + uct_total + cct_total +
+               factor(income_class) + factor(region),
+             data = df_analysis_clean)
+
+m3_tot <- lm(poverty_gap_reduction ~ avg_transfer_amount + uct_total + cct_total +
+               factor(income_class) + factor(region) +
+               school_feeding_total + public_works_total,
+             data = df_analysis_clean)
+
+m4_tot <- lm(poverty_gap_reduction ~ avg_transfer_amount + uct_total + cct_total +
+               factor(income_class) + factor(region) +
+               school_feeding_total + public_works_total + social_care_total,
+             data = df_analysis_clean)
+```
+
+**Table 1 — Poorest Quintile Coverage**
+
+```{r}
+#| results: asis
+stargazer(m1_pq, m2_pq, m3_pq, m4_pq,
+          type             = "latex",
+          header           = FALSE,
+          title            = "Poverty Gap Reduction --- Poorest Quintile Coverage",
+          column.labels    = c("Model 1", "Model 2", "Model 3", "Model 4"),
+          dep.var.labels   = "Poverty Gap Reduction (\\%)",
+          single.row       = TRUE,
+          font.size        = "tiny",
+          column.sep.width = "1pt",
+          no.space         = TRUE)
+```
+
+**Table 2 — Total Population Coverage**
+
+```{r}
+#| results: asis
+stargazer(m1_tot, m2_tot, m3_tot, m4_tot,
+          type             = "latex",
+          header           = FALSE,
+          title            = "Poverty Gap Reduction --- Total Population Coverage",
+          column.labels    = c("Model 1", "Model 2", "Model 3", "Model 4"),
+          dep.var.labels   = "Poverty Gap Reduction (\\%)",
+          single.row       = TRUE,
+          font.size        = "tiny",
+          column.sep.width = "1pt",
+          no.space         = TRUE)
+```
+
+## Expenditure-Based Analysis (Dataset 2)
+
+This section uses a second dataset combining poverty gap reduction from Table 1 (filtered to 2020–2022) with Social Assistance expenditure as % of GDP from the ASPIRE EXP-SA table. Unlike the coverage-based models above, regressors here measure how much governments *spend* on each programme rather than how many people are reached.
+
+### Load and prepare Dataset 2
+
+```{r}
+df2 <- read.csv(here("data/clean_dataset2.csv"))
+
+# Replace NA in confounder expenditure cols with 0 (no reported spend = no prog)
+# Keep only rows where at least one of the key regressors is observed
+df2_model <- df2 |>
+  filter(!is.na(exp_total_sa_excl_hlt) |
+           !is.na(exp_cct) |
+           !is.na(exp_uct)) |>
+  mutate(
+    across(c(exp_school_feeding, exp_public_works, exp_social_care),
+           ~ replace_na(., 0)),
+    income_class = droplevels(factor(income_class)),
+    region       = droplevels(factor(region))
+  )
+
+cat("Rows available for modelling:", nrow(df2_model), "\n")
+glimpse(df2_model)
+```
+
+### Staircase regression — Expenditure (% GDP)
+
+```{r}
+e1 <- lm(poverty_gap_reduction ~
+           exp_total_sa_excl_hlt + exp_cct + exp_uct,
+         data = df2_model)
+
+e2 <- lm(poverty_gap_reduction ~
+           exp_total_sa_excl_hlt + exp_cct + exp_uct +
+           income_class + region,
+         data = df2_model)
+
+e3 <- lm(poverty_gap_reduction ~
+           exp_total_sa_excl_hlt + exp_cct + exp_uct +
+           income_class + region +
+           exp_school_feeding + exp_public_works,
+         data = df2_model)
+
+e4 <- lm(poverty_gap_reduction ~
+           exp_total_sa_excl_hlt + exp_cct + exp_uct +
+           income_class + region +
+           exp_school_feeding + exp_public_works + exp_social_care,
+         data = df2_model)
+```
+
+**Table 3 — Poverty Gap Reduction: Expenditure (% GDP)**
+
+```{r}
+#| results: asis
+stargazer(e1, e2, e3, e4,
+          type             = "latex",
+          header           = FALSE,
+          title            = "Poverty Gap Reduction --- SA Expenditure (\\% GDP)",
+          column.labels    = c("Model 1", "Model 2", "Model 3", "Model 4"),
+          dep.var.labels   = "Poverty Gap Reduction (\\%)",
+          covariate.labels = c(
+            "Total SA Exp. excl. Health (\\% GDP)",
+            "CCT Expenditure (\\% GDP)",
+            "UCT Expenditure (\\% GDP)",
+            "School Feeding Exp. (\\% GDP)",
+            "Public Works Exp. (\\% GDP)",
+            "Social Care Exp. (\\% GDP)"
+          ),
+          omit             = c("income_class", "region"),
+          add.lines        = list(
+            c("Income class FE", "No",  "Yes", "Yes", "Yes"),
+            c("Region FE",       "No",  "Yes", "Yes", "Yes")
+          ),
+          single.row       = TRUE,
+          font.size        = "tiny",
+          column.sep.width = "1pt",
+          no.space         = TRUE)
+```
 
 ## Conclusion
 

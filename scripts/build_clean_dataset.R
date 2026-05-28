@@ -77,7 +77,26 @@ df_analysis <- df_t7 |>
   filter(!is.na(poverty_gap_reduction))
 
 glimpse(df_analysis)
-cat("Rows:", nrow(df_analysis), "\n")
+cat("Rows in df_analysis:", nrow(df_analysis), "\n")
 
 write.csv(df_analysis, here("data/clean_dataset.csv"), row.names = FALSE)
-cat("clean_dataset.csv updated successfully.\n")
+cat("clean_dataset.csv written.\n")
+
+# Drop rows where both UCT and CCT are entirely NA
+df_analysis_clean <- df_analysis |>
+  filter(
+    (!is.na(uct_pq) | !is.na(uct_total)) &
+      (!is.na(cct_pq) | !is.na(cct_total))
+  ) |>
+  mutate(across(c(school_feeding_pq, school_feeding_total,
+                  public_works_pq,   public_works_total,
+                  social_care_pq,    social_care_total),
+                ~ replace_na(., 0)))
+
+glimpse(df_analysis_clean)
+cat("Rows in df_analysis_clean:", nrow(df_analysis_clean), "\n")
+
+write.csv(df_analysis_clean,
+          here("data/clean_dataset_uct_cct.csv"),
+          row.names = FALSE)
+cat("clean_dataset_uct_cct.csv written.\n")
